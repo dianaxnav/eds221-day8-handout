@@ -1,0 +1,73 @@
+---
+title: "DATA VIZ WORST"
+format: html
+editor: visual
+---
+
+```{r}
+library(tidyverse)
+library(janitor)
+library(here)
+
+library(patchwork)
+library(ggrepel)
+library(gghighlight)
+library(paletteer)
+library(gapminder)
+library(sf)
+library(jpeg)
+library(ggpubr)
+```
+
+```{r}
+space_time <- read_sf(here("data", "space_launches.csv")) %>% 
+  filter(launch_year %in% 1998 | launch_year %in% 1999)
+
+url <- "https://upload.wikimedia.org/wikipedia/commons/f/f1/Canadian_chicken.jpg"
+download.file(url, destfile = "Canadian chicken.jpg")
+img <- readJPEG("Canadian chicken.jpg")
+
+ggplot(data = space_time, aes(x = agency, y = launch_year)) +
+  background_image(img) +
+  geom_col() +
+  geom_text_repel(aes(label = mission)) +
+  gghighlight(launch_year == "agency_type") +
+  theme_minimal()
+  
+  
+```
+
+```{r}
+sf_emissions <- read_sf(here("data", "San_Francisco_Communitywide_Greenhouse_Gas_Inventory.csv")) %>% 
+  clean_names()
+
+#1. Create a summary table of total annual greenhouse gas emissions (only from Emissions_mtCO2e column) by sector_general
+total_greenhouse <- sf_emissions %>% 
+  select(sector_general, emissions_mt_co2e)
+#2. Create a summary table of total annual greenhouse gas emissions (only from Emissions_mtCO2e column) by year and commodity type
+total_greenhouse2 <- sf_emissions %>% 
+  select(calendar_year, emissions_mt_co2e, commodity_type)
+
+#Create a subset of the data that only contains observations from 2005 on, only for observations where Sector_Detail2 contains the pattern “PG&E”, then limit to columns Calendar_Year, Sector_Detail2 and Emissions_mtCO2e.
+
+obs_2005 <- sf_emissions %>% 
+  filter(calendar_year %in% 2005:2015) %>% 
+  filter(str_detect(sector_detail2, "PG&E")) %>% 
+  select(calendar_year, sector_detail2, emissions_mt_co2e)
+
+class("emissions_mt_co2e")
+```
+
+```{r}
+#Create a finalized graph (as perfect as you can make it) using the San Francisco GHG emissions dataset. You get to choose what you want to visualize. You can pick which variables & observations you’re interested in. You may want to do some wrangling / summarizing first.
+
+my_emissions <- sf_emissions %>%
+  filter(emissions_mt_co2e != 0.00) %>% 
+  mutate(emissions_num = as.numeric(emissions_mt_co2e)) %>% 
+  filter(sector_general == c("Buildings", "Transportation", "Landfilled Organics"))
+
+ggplot(my_emissions, aes(x = calendar_year, y = emissions_num)) +
+ geom_point(size = 3, alpha = 1/2, aes(color = sector_general)) +
+  theme_minimal() + 
+  labs(title = "Evaluating emissions between 1990 and 2019", y = "CO2 Emissions (mt)", x = "Year") 
+```
